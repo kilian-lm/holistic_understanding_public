@@ -13,7 +13,7 @@ import gunicorn
 # Create the Flask app
 app = Flask(__name__)
 
-os.environ['GOOGLE_APPLICATION_CREDENTIALS'] ='/run/secrets/service_account_key.json'
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] ='/run/secrets/*****'
 # os.environ['GOOGLE_APPLICATION_CREDENTIALS']
 CLOUD_STORAGE_BUCKET = os.environ['CLOUD_STORAGE_BUCKET']
 
@@ -25,7 +25,6 @@ timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
 class PDFHandler:
 
     def __init__(self):
-        # self.bucket_name = 'cloud_vision_221122'
         self.bucket_name = CLOUD_STORAGE_BUCKET
         self.client = storage.Client()
 
