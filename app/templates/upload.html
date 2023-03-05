@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{% block title %}Integriertes datengetriebenes Verständnis meiner Stadt{% endblock %}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+          crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">Beta Version:: Integriertes Verständnis</a>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ml-auto">
+            <li class="nav-item">
+            <a class="nav-link{% if page == 'mission' %} active{% endif %}" href="/mission">Mission</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link{% if page == 'legal_notice' %} active{% endif %}"
+                href="/legal_notice">Legal Notice</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="https://cv-api-caller-dacqlspr3a-uc.a.run.app/" target="_blank">about me</a>
+            </li>
+        </ul>
+    </div>
+</nav>
+<div class="container my-4">
+    <div class="row">
+        <div class="col-md-6">
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item"><span
+                        class="font-weight-bold">Laden Sie Ihren Rewe <a href="https://www.rewe.de/payback/ebon/" target="_blank">E-Bon</a> im PDF-Format hoch</span> und erhalten Sie
+                    die Daten im CSV-Format zurück, für Ihre persönliche Analyse.
+                </li>
+                <li class="list-group-item">Tragen Sie einen kleinen Teil dazu bei, dass Daten in Zukunft <span
+                        class="font-weight-bold">integrierter bereitgestellt werden</span>.
+                </li>
+                <li class="list-group-item">Teilen Sie Ihren Rewe E-Bon, um zu einem <span class="font-weight-bold">umfassenderen Verständnis Ihrer Stadt beizutragen</span>.
+                </li>
+                <li class="list-group-item">Die persönlichen Infos, die ein Bon enthält, werden <span
+                        class="font-weight-bold">nicht gespeichert</span>. Siehe <a href="https://github.com/kilian-lm/holistic_understanding" target="_blank">Repo</a></li>
+            </ul>
+        </div>
+        <div class="col-md-6">
+            <form action="/" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="pdf_file">PDF-Datei hochladen:</label>
+                    <input type="file" class="form-control-file" id="pdf_file" name="pdf_file" required>
+                </div>
+                <div class="form-group form-check">
+                    <input type="checkbox" class="form-check-input" id="save_to_bucket" name="save_to_bucket">
+                    <label class="form-check-label" for="save_to_bucket">Daten in einem Google Cloud Storage Bucket
+                        speichern</label>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="Email-Adresse">
+                </div>
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary mx-auto d-block">Absenden</button>
+                </div>
+            </form>
+            {% if csv_state %}
+            <div class="alert alert-info mt-3" role="alert">
+                {{ csv_state }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% if csv_file %}
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2 class="text-center">Ergebnisse</h2>
+            <div class="progress mb-3">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                     style="width: 100%"
+                     aria-valuenow="100"
+                     aria-valuemin="0" aria-valuemax="100">
+                </div>
+            </div>
+            <div class="text-center mb-3">
+                <a href="{{ url_for('download_csv', filename=csv_file) }}" class="btn btn-primary">Download CSV</a>
+            </div>
+            <p class="text-center"> Eine Analyse mit aggregierten Daten findet nur nach Bestätigung per Email statt.</p>
+            <p class="text-center">Interessante Ideen könnten sein:
+            </p>
+            <ul class="text-center">
+                <li>Korrelation Einkaufsverhalten -> Blutbild -> Gesundheit</li>
+                <li>Korrelation Einkaufsverhalten -> Abwasser/Klärwerke -> Grundwasser</li>
+                <li>Psychologischer Index -> Versicherung -> Gesundheitsindex</li>
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+</div>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNVQ8uN"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+</body>
+</html>
+
+
+
