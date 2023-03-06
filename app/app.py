@@ -21,15 +21,13 @@ CLOUD_STORAGE_BUCKET = os.environ['CLOUD_STORAGE_BUCKET']
 now = datetime.datetime.now()
 timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
 
-# Create a class for handling PDF files
-class PDFHandler:
-
+class App:
     def __init__(self):
-        self.bucket_name = CLOUD_STORAGE_BUCKET
         self.client = storage.Client()
+        self.bucket_name = 'cloud_vision_221122'
+        self.bucket = self.client.bucket(self.bucket_name)
 
-
-    def filter_and_save_to_csv(self, lst, email, save_to_bucket, filename):
+    def filter_and_save_to_csv(self, lst, email, save_to_bucket, timestamp):
         # Create a regular expression pattern to match the desired strings
         pattern = r'(\w+)\s*(\d+,\d+)\s*B'
 
@@ -49,25 +47,28 @@ class PDFHandler:
             filtered_lst[i] = (product, price, email)
 
         # Save the filtered list to a CSV file with three columns: "product", "price" and "email"
-        with open(os.path.join('temp_csv', filename), 'w', newline='') as csvfile:
+        filename = os.path.join('temp_csv', f"{timestamp}.csv")
+
+        with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
             writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(['product', 'price', 'email'])
+            if email:
+                writer.writerow(['product', 'price', 'email'])
+            else:
+                writer.writerow(['product', 'price'])
             writer.writerows(filtered_lst)
 
         # Upload the CSV file to a GCS bucket
         if save_to_bucket:
-            bucket = self.client.bucket(self.bucket_name)
-            blob = bucket.blob(filename)
-            blob.upload_from_filename(os.path.join('temp_csv', filename))
+            blob = self.bucket.blob(filename)
+            blob.upload_from_filename(filename)
 
         return filename
 
-    def process_pdf(self, file_path, email, save_to_bucket, filename):
+    def process_pdf(self, file_path, email, save_to_bucket, timestamp):
         # Open the PDF file
         pdf_file = open(file_path, 'rb')
         pdf_reader = PyPDF2.PdfReader(pdf_file)
 
-        # Extract the text from the PDF file
         # Extract the text from the PDF file
         text = ''
         for page_num in range(len(pdf_reader.pages)):
@@ -77,7 +78,7 @@ class PDFHandler:
         lines = text.split('\n')
 
         # Filter and save the data to a CSV file
-        filename = self.filter_and_save_to_csv(lines, email, save_to_bucket, filename)
+        filename = self.filter_and_save_to_csv(lines, email, save_to_bucket, timestamp)
 
         # Close the PDF file
         pdf_file.close()
@@ -85,80 +86,44 @@ class PDFHandler:
         return filename
 
 
-pdf_handler = PDFHandler()
+app_obj = App()
 
+
+import os
+import glob
 
 @app.route('/', methods=['GET', 'POST'])
-def upload_pdf():
-    csv_file = None
-    csv_state = None
+def index():
     if request.method == 'POST':
         pdf_file = request.files['pdf_file']
-        email = request.form.get('email')
         save_to_bucket = request.form.get('save_to_bucket')
+        email = request.form.get('email')
 
-        # set the filename as the timestamp
-        # now = datetime.datetime.now()
-        # timestamp = now.strftime("%Y-%m-%d-%H-%M-%S")
-        filename = timestamp + '.csv'
+        # Save PDF file to server
+        pdf_filename = os.path.join('temp_pdf', 'pdf_file.pdf')
+        pdf_file.save(pdf_filename)
 
-        # Save the pdf to temp_pdf directory
-        pdf_file.save(os.path.join('temp_pdf', pdf_file.filename))
+        # Process PDF file and filter data
 
-        # process the pdf and save the csv to temp
-        save_to_bucket = False
+        csv_filename = app_obj.process_pdf(pdf_filename, email, save_to_bucket, timestamp)
 
-        # process the pdf and save the csv to temp_csv directory
-        csv_file = pdf_handler
-        csv_file = pdf_handler.process_pdf(os.path.join('temp_pdf', pdf_file.filename), email, save_to_bucket,
-                                           filename)
-
-        # Check if save_to_bucket checkbox is checked before uploading the files to GCS
-        if save_to_bucket == 'on':
-            # Upload csv to GCS bucket
-            bucket = pdf_handler.client.bucket(pdf_handler.bucket_name)
-            blob = bucket.blob(filename)
-            blob.upload_from_filename(os.path.join('temp_csv', filename))
-
-            # Upload pdf to GCS bucket
-            blob = bucket.blob(pdf_file.filename)
-            blob.upload_from_filename(os.path.join('temp_pdf', pdf_file.filename))
-
-
-        if save_to_bucket == 'on':
-            csv_state = "processing"
+        # Set state to display to user
+        if save_to_bucket:
+            csv_state = 'CSV file uploaded to GCS bucket. Thanks a lot:) '
         else:
-            csv_state = "Ihre Daten wurden NICHT gespeichert, viel Spass beim Analysieren"
+            csv_state = 'CSV file is not uploade. Happy Analyzing'
 
-            return render_template('upload.html', csv_file=filename, csv_state=csv_state)
+        return render_template('upload.html', csv_file=csv_filename, csv_state=csv_state)
 
-    else:
-        return render_template('upload.html')
-
-
-
+    return render_template('upload.html')
 
 
 @app.route('/download_csv')
 def download_csv():
-    # set the filename as the timestamp
-    filename = timestamp + '.csv'
-    # Always read from temp directory, even if the checkbox is checked
-    save_to_bucket = False
-    # Check if save_to_bucket checkbox is checked before downloading the file
-    if request.args.get('save_to_bucket') == 'on':
-        # Download csv from GCS bucket
-        bucket = pdf_handler.client.bucket(pdf_handler.bucket_name)
-        blob = bucket.blob(filename)
-        blob.download_to_filename(os.path.join('temp_csv', filename))
-        save_to_bucket = True
-
-    if save_to_bucket:
-        csv_state = "processing"
-    else:
-        csv_state = "Ihre Daten wurden NICHT gespeichert, viel Spass beim Analysieren"
-
-    # Create a thread to wait for the download button to be clicked
+    # Get the filename of the CSV file from the temp_csv folder
+    global timestamp
+    filename = f"{timestamp}.csv"
+    # return send_file(filename, as_attachment=True)
     def wait_for_download():
         while True:
             if os.path.exists(os.path.join('temp_csv', filename)):
@@ -182,7 +147,6 @@ def download_csv():
     return response
 
 
-
 @app.route('/mission')
 def mission():
     return render_template('mission.html')
@@ -191,14 +155,7 @@ def mission():
 def legal_notice():
     return render_template('legal_notice.html')
 
-if __name__ == '__main__':
-    # Delete temp directories before starting the server
-    shutil.rmtree('temp_csv', ignore_errors=True)
-    shutil.rmtree('temp_pdf', ignore_errors=True)
-    os.makedirs('temp_csv', exist_ok=True)
-    os.makedirs('temp_pdf', exist_ok=True)
-    app.run(host="0.0.0.0", port=5000)
-# app.run(debug=False)
 
-# if __name__ == "__main__":
-#     app.run(host="0.0.0.0")
+
+if __name__ == '__main__':
+    app.run(host="0.0.0.0", port=5000)
